@@ -7,6 +7,7 @@ import desdb
 import numpy as np
 import esutil
 import pyfits
+import healpy as hp
 from mpi4py import MPI
 
 
@@ -96,6 +97,59 @@ def NosimSelect(select, where=None):
         w.append('truth_%s.balrog_index=nosim_det.balrog_index' %(band) )
 
     return QuerySFW(s, f, w, select, where)
+
+
+def GetHealPixRectangles(nside, dbrange, nest):
+    hpindex = np.arange(hp.nside2npix(nside))
+
+    vec_corners = hp.boundaries(nside, hpindex, nest=nest)
+    vec_corners = np.transpose(vec_corners, (0,2,1))
+    vec_corners = np.reshape(vec_corners, (vec_corners.shape[0]*vec_corners.shape[1], vec_corners.shape[2]))
+   
+    theta_corners, phi_corners = hp.vec2ang(vec_corners)
+    theta_corners = np.reshape(theta_corners, (theta_corners.shape[0]/4, 4))
+    phi_corners = np.reshape(phi_corners, (phi_corners.shape[0]/4, 4))
+
+    ra_corners = np.degrees(phi_corners)
+    dec_corners = 90.0 - np.degrees(theta_corners)
+
+    rainside = ( (ra_corners > dbrange[0]) & (ra_corners < dbrange[1]) )
+    rakeep = np.sum(rainside, axis=-1)
+    decinside = ( (dec_corners > dbrange[2]) & (dec_corners < dbrange[3]) )
+    deckeep = np.sum(decinside, axis=-1)
+    keep = ( (rakeep > 0) & (deckeep > 0) )
+    ra_corners, dec_corners, hpindex = Cut(ra_corners, dec_corners, hpindex, cut=keep)
+
+    ramin = np.amin(ra_corners, axis=-1)
+    ramax = np.amax(ra_corners, axis=-1)
+    decmin = np.amin(dec_corners, axis=-1)
+    decmax = np.amax(dec_corners, axis=-1)
+
+    return ramin, ramax, decmin, decmax, hpindex
+
+
+def GetCourseRange(select):
+    cur = desdb.connect()
+    arr = cur.quick("SELECT min(ra) as ramin, max(ra) as ramax, min(dec) as decmin, max(dec) as decmax FROM balrog_%s_truth_%s" %(select['table'],select['bands'][0]), array=True)
+    return arr[0]
+
+def DoCount(ramin, ramax, decmin, decmax, hpindex, select):
+    cur = desdb.connect()
+    nonzero = np.zeros( len(hpindex), dtype=np.bool_)
+    for i in range(len(hpindex)):
+        q = "SELECT count(*) as count from balrog_%s_truth_%s where dec between %f and %f and ra between %f and %f" %(select['table'], select['bands'][0], decmin[i],decmax[i],ramin[i],ramax[i])
+        arr = cur.quick(q, array=True)
+        if arr['count'][0] > 0:
+            nonzero[i] = True
+    return nonzero
+
+
+def Cut(*args, **kwargs):
+    a = [None]*len(args)
+    for i in range(len(args)):
+        a[i] = args[i][kwargs['cut']]
+    return a
+
 
 
 def AppendSelects(ss, select, truthband=None, simband=None, truthlabel='truth', simlabel='sim', simbandappend='', truthbandappend=''):
