@@ -108,7 +108,7 @@ def AppendSelects(ss, select, truthband=None, simband=None, truthlabel='truth', 
     return ss
 
 
-def GetQuery(select, where, kind='sim'):
+def GetQuery(select, truthwhere, simwhere, kind='sim'):
     js = []
     ss = []
     bands = select['bands']
@@ -127,7 +127,7 @@ def GetQuery(select, where, kind='sim'):
         elif kind=='truth':
             simlabel = 'truth'
 
-        bq = Join2Truth(select, bands[i], simband, where, kind=kind)
+        bq = Join2Truth(select, bands[i], simband, truthwhere, simwhere, kind=kind)
         ss = AppendSelects(ss, select, truthband=bands[i], simband=bands[i], truthlabel='joined', simlabel=simlabel, truthbandappend=truthbandappend, simbandappend=simbandappend)
         if i==0:
             f = """FROM (%s) joined_%s"""%(bq, bands[i])
@@ -138,29 +138,29 @@ def GetQuery(select, where, kind='sim'):
     return q
 
 
-def Join2Truth(select, truthband, simband, where, kind='sim'):
+def Join2Truth(select, truthband, simband, truthwhere, simwhere, kind='sim'):
     ss = []
     ss = AppendSelects(ss, select, truthband=truthband, simband=simband, truthlabel='truth', simlabel=kind)
     ss = ', '.join(ss)
-    f = """(SELECT %s FROM balrog_%s_truth_%s where %s) truth_%s"""%(', '.join(select['truth']), select['table'],truthband, where, truthband)
+    f = """(SELECT %s FROM balrog_%s_truth_%s %s) truth_%s"""%(', '.join(select['truth']), select['table'],truthband, truthwhere, truthband)
     q = """SELECT %s FROM %s""" %(ss, f)
     if kind in ['sim','nosim']:
-        j = """(SELECT %s, balrog_index FROM balrog_%s_%s_%s where %s) %s_%s"""%(', '.join(select['sim']), select['table'], kind, simband, where, kind, simband)
+        j = """(SELECT %s, balrog_index FROM balrog_%s_%s_%s %s) %s_%s"""%(', '.join(select['sim']), select['table'], kind, simband, simwhere, kind, simband)
         o = """truth_%s.balrog_index=%s_%s.balrog_index""" %(truthband,kind,simband)
         q = """%s JOIN %s ON %s"""%(q,j,o)
     return q
 
 
-def GetBalrog(select, where):
+def GetBalrog(select, truthwhere='', simwhere=''):
     cur = desdb.connect()
 
-    q = GetQuery(select, where, kind='truth')
+    q = GetQuery(select, truthwhere, simwhere, kind='truth')
     truth = cur.quick(q, array=True)
 
-    q = GetQuery(select, where, kind='sim')
+    q = GetQuery(select, truthwhere, simwhere, kind='sim')
     sim = cur.quick(q, array=True)
 
-    q = GetQuery(select, where, kind='nosim')
+    q = GetQuery(select, truthwhere, simwhere, kind='nosim')
     nosim = cur.quick(q, array=True)
     
     return [truth, sim, nosim]

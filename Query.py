@@ -44,6 +44,6 @@ if __name__=='__main__':
         #sim = DBfunctions.SimSelect(select, where="tilename='%s'"%(tile))
         #nosim = DBfunctions.NosimSelect(select, where="tilename='%s'"%(tile))
         
-        where = "tilename='%s'"%(tile)
-        truth, sim, nosim = DBfunctions.GetBalrog(select, where)
+        where = "where tilename='%s'"%(tile)
+        truth, sim, nosim = DBfunctions.GetBalrog(select, truthwhere=where, simwhere=where)
         print tile, len(truth), len(sim), len(nosim)
