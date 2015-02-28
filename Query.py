@@ -25,6 +25,7 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 if __name__=='__main__': 
 
     select = {'table': 'sva1v2',
+              'des': 'sva1_coadd_objects',
               'bands': ['i'],
               'truth': ['balrog_index', 'mag', 'ra', 'dec'],
               'sim': ['mag_auto']
@@ -46,4 +47,5 @@ if __name__=='__main__':
         
         where = "where tilename='%s'"%(tile)
         truth, sim, nosim = DBfunctions.GetBalrog(select, truthwhere=where, simwhere=where)
-        print tile, len(truth), len(sim), len(nosim)
+        des = DBfunctions.GetDES(select, where=where)
+        print tile, len(truth), len(sim), len(nosim), len(des)

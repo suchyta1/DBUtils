@@ -164,3 +164,15 @@ def GetBalrog(select, truthwhere='', simwhere=''):
     nosim = cur.quick(q, array=True)
     
     return [truth, sim, nosim]
+
+
+def GetDES(select, where=''):
+    cur = desdb.connect()
+    ss = []
+    for band in select['bands']:
+        for sel in select['sim']:
+            ss.append('%s_%s' %(sel,band))
+    ss = ', '.join(ss)
+    q = """SELECT %s FROM %s %s"""%(ss, select['des'], where)
+    des = cur.quick(q, array=True)
+    return des
