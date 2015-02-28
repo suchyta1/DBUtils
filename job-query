@@ -1,0 +1,6 @@
+command: |
+   mpirun  -np 80 -hostfile %hostfile% ./Query.py
+mode: bycore
+N: 80
+hostfile: auto
+job_name: job-query
